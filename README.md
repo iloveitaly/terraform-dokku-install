@@ -2,6 +2,9 @@
 
 OpenTofu/Terraform Module to install Docker, Dokku, and Dokku plugins on a server with SSH access using the official Dokku bootstrap script.
 
+This pairs really well with this [other dokku terraform module](https://github.com/aaronstillwell/terraform-provider-dokku) which is focused
+on configuring an already-installed Dokku instance.
+
 ## Features
 
 - ✅ Uses official Dokku bootstrap installation method

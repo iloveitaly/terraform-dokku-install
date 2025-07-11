@@ -1,9 +1,17 @@
 {
-  "description": "Repo description",
-  "homepage": "https://github.com/kbrashears5/github-action-repo-sync",
+
+  "description": "OpenTofu/Terraform Module to install Docker, Dokku, and Dokku plugins on a server with SSH access using the official Dokku bootstrap script",
+  "homepage": "https://github.com/iloveitaly/terraform-dokku-install",
   "keywords": [
-    "sync",
-    "repo",
-    "metadata"
+    "terraform",
+    "opentofu",
+    "dokku",
+    "docker",
+    "deployment",
+    "infrastructure",
+    "bootstrap",
+    "ubuntu",
+    "ssh",
+    "plugins"
   ]
 }
