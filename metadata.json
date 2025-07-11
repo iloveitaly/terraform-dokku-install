@@ -1,0 +1,9 @@
+{
+  "description": "Repo description",
+  "homepage": "https://github.com/kbrashears5/github-action-repo-sync",
+  "keywords": [
+    "sync",
+    "repo",
+    "metadata"
+  ]
+}
