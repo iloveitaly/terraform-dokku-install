@@ -1,1 +1,2 @@
-https://github.com/antonbabenko/pre-commit-terraform
+- [ ] https://github.com/antonbabenko/pre-commit-terraform
+- [ ] `sudo usermod -aG docker $USER` to add user to docker group
