@@ -15,7 +15,12 @@ output "ssh_host" {
 
 output "dokku_installation_id" {
   description = "Unique identifier for this Dokku installation resource. Changes when the installation is re-triggered."
-  value       = null_resource.install.id
+  value       = ssh_resource.install.id
+}
+
+output "dokku_install_stdout" {
+  description = "Captured stdout from the Dokku bootstrap script. Useful for debugging installation issues."
+  value       = ssh_resource.install.result
 }
 
 output "dokku_ssh_key_configured" {

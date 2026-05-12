@@ -2,8 +2,16 @@
 
 OpenTofu/Terraform Module to install Docker, Dokku, and Dokku plugins on a server with SSH access using the official Dokku bootstrap script.
 
-This pairs really well with this [other dokku terraform module](https://github.com/aaronstillwell/terraform-provider-dokku) which is focused
-on configuring an already-installed Dokku instance.
+This pairs really well with a downstream Dokku provider for managing apps,
+services, and links on the installed instance. Active options on the OpenTofu
+registry:
+
+- [`aliksend/dokku`](https://registry.opentofu.org/providers/aliksend/dokku) (v1.0.24+)
+- [`dimmkirr/dokku`](https://registry.opentofu.org/providers/dimmkirr/dokku) (v1.2.0+)
+- [`aaronstillwell/dokku`](https://github.com/aaronstillwell/terraform-provider-dokku)
+
+Note: their `dokku_plugin` resources only *verify* a plugin is installed —
+plugin install needs root, so plugin management stays in this module.
 
 ## Features
 
@@ -35,7 +43,8 @@ The Docker daemon configuration is handled by a separate sub-module (`./modules/
 
 ## Requirements
 
-- OpenTofu >= 1.6 or Terraform >= 1.5
+- OpenTofu / Terraform >= 1.10
+- `loafoe/ssh` provider ~> 2.7 (auto-installed)
 - SSH access to target server
 - Ubuntu 20.04+ (recommended)
 

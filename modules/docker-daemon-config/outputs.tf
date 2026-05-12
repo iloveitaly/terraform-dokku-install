@@ -1,7 +1,7 @@
 output "configuration_applied" {
   description = "Whether the Docker daemon configuration was successfully applied"
   value       = true
-  depends_on  = [null_resource.docker_daemon_config]
+  depends_on  = [ssh_resource.docker_daemon_config]
 }
 
 output "configuration_hash" {
@@ -11,5 +11,5 @@ output "configuration_hash" {
 
 output "resource_id" {
   description = "Unique identifier for this configuration resource"
-  value       = null_resource.docker_daemon_config.id
+  value       = ssh_resource.docker_daemon_config.id
 }

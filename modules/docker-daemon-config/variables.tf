@@ -23,8 +23,3 @@ variable "docker_daemon_config" {
   }
 }
 
-variable "depends_on_resources" {
-  description = "List of resources this module should depend on (for proper ordering)"
-  type        = list(string)
-  default     = []
-}

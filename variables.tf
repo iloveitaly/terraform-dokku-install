@@ -7,13 +7,13 @@ variable "ssh_private_key_path" {
 variable "ssh_user" {
   description = "SSH user"
   type        = string
-  default     = null
+  nullable    = false
 }
 
 variable "ssh_host" {
   description = "SSH host"
   type        = string
-  default     = null
+  nullable    = false
 }
 
 variable "dokku_version" {
@@ -44,12 +44,6 @@ variable "dokku_plugins" {
   description = "List of Dokku plugins to install. Can be shortnames (postgres, redis, mysql, clickhouse) or full URLs"
   type        = list(string)
   default     = []
-}
-
-variable "remove_unlisted_plugins" {
-  description = "Whether to remove plugins that are installed but not listed in dokku_plugins"
-  type        = bool
-  default     = false
 }
 
 variable "docker_daemon_config" {

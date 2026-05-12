@@ -40,9 +40,6 @@ module "dokku" {
     }
     storage-driver = "overlay2"
   })
-
-  # Optional: Remove plugins not in the list (excluding core plugins)
-  remove_unlisted_plugins = false
 }
 
 output "dokku_info" {
