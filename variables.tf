@@ -51,3 +51,14 @@ variable "remove_unlisted_plugins" {
   type        = bool
   default     = false
 }
+
+variable "docker_daemon_config" {
+  description = "Custom Docker daemon configuration as JSON string to be written to /etc/docker/daemon.json. Examples: enable containerd snapshotter, configure logging drivers, set storage drivers, etc."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.docker_daemon_config == null || can(jsondecode(var.docker_daemon_config))
+    error_message = "The docker_daemon_config must be a valid JSON string."
+  }
+}

@@ -32,3 +32,13 @@ output "dokku_plugins" {
   description = "List of Dokku plugins that were configured for installation"
   value       = var.dokku_plugins
 }
+
+output "docker_daemon_config_applied" {
+  description = "Whether custom Docker daemon configuration was applied"
+  value       = var.docker_daemon_config != null ? module.docker_daemon_config[0].configuration_applied : false
+}
+
+output "docker_daemon_config_hash" {
+  description = "Hash of the applied Docker daemon configuration (if any)"
+  value       = var.docker_daemon_config != null ? module.docker_daemon_config[0].configuration_hash : null
+}

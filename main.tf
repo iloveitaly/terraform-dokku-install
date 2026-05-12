@@ -64,6 +64,24 @@ resource "null_resource" "install" {
   }
 }
 
+# Docker Daemon Configuration Module
+#
+# This module manages Docker daemon configuration separately from the Dokku installation.
+# It runs after Docker is installed but before Dokku installation to ensure proper configuration.
+#
+module "docker_daemon_config" {
+  count  = var.docker_daemon_config != null ? 1 : 0
+  source = "./modules/docker-daemon-config"
+
+  ssh_host             = var.ssh_host
+  ssh_user             = var.ssh_user
+  ssh_private_key_path = var.ssh_private_key_path
+  docker_daemon_config = var.docker_daemon_config
+
+  # Ensure this runs after Docker is installed but before Dokku
+  depends_on = [null_resource.install]
+}
+
 # SSH Key Management Resource
 #
 # This resource adds an SSH public key to Dokku for deployment access.
@@ -78,8 +96,11 @@ resource "null_resource" "install" {
 resource "null_resource" "ssh_key" {
   count = var.dokku_ssh_public_key_path != null ? 1 : 0
 
-  # This resource depends on the Dokku installation being complete
-  depends_on = [null_resource.install]
+  # This resource depends on the Dokku installation and Docker configuration being complete
+  depends_on = [
+    null_resource.install,
+    module.docker_daemon_config
+  ]
 
   # Triggers for when to update the SSH key
   triggers = {

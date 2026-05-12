@@ -27,6 +27,20 @@ module "dokku" {
     "https://github.com/dokku/dokku-letsencrypt.git"
   ]
 
+  # Optional: Custom Docker daemon configuration
+  # Example: Enable containerd snapshotter and configure logging
+  docker_daemon_config = jsonencode({
+    features = {
+      containerd-snapshotter = true
+    }
+    log-driver = "json-file"
+    log-opts = {
+      max-size = "10m"
+      max-file = "3"
+    }
+    storage-driver = "overlay2"
+  })
+
   # Optional: Remove plugins not in the list (excluding core plugins)
   remove_unlisted_plugins = false
 }
@@ -34,11 +48,13 @@ module "dokku" {
 output "dokku_info" {
   description = "Information about the Dokku installation"
   value = {
-    hostname           = module.dokku.dokku_hostname
-    version            = module.dokku.dokku_version
-    ssh_host           = module.dokku.ssh_host
-    ssh_key_configured = module.dokku.dokku_ssh_key_configured
-    ssh_key_name       = module.dokku.dokku_ssh_key_name
-    plugins_configured = module.dokku.dokku_plugins
+    hostname                     = module.dokku.dokku_hostname
+    version                      = module.dokku.dokku_version
+    ssh_host                     = module.dokku.ssh_host
+    ssh_key_configured           = module.dokku.dokku_ssh_key_configured
+    ssh_key_name                 = module.dokku.dokku_ssh_key_name
+    plugins_configured           = module.dokku.dokku_plugins
+    docker_daemon_config_applied = module.dokku.docker_daemon_config_applied
+    docker_daemon_config_hash    = module.dokku.docker_daemon_config_hash
   }
 }
