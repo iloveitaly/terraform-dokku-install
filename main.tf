@@ -73,7 +73,7 @@ resource "ssh_resource" "ssh_key" {
 
   commands = [
     "sudo dokku ssh-keys:remove ${var.dokku_ssh_key_name} 2>/dev/null || true",
-    "cat /tmp/dokku-key.pub | sudo dokku ssh-keys:add ${var.dokku_ssh_key_name}",
+    "sudo dokku ssh-keys:add ${var.dokku_ssh_key_name} /tmp/dokku-key.pub",
     "rm -f /tmp/dokku-key.pub",
   ]
 
