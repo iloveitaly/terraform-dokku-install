@@ -15,15 +15,15 @@ plugin install needs root, so plugin management stays in this module.
 
 ## Features
 
-- ✅ Uses official Dokku bootstrap installation method
-- ✅ Idempotent installation (safe to run multiple times)
-- ✅ Modern Ubuntu support (20.04, 22.04, 24.04)
-- ✅ Supports latest Dokku versions (0.35.x)
-- ✅ Improved error handling and logging
-- ✅ Declarative plugin management
-- ✅ Supports both shortnames and full URLs for plugins
-- ✅ Modular Docker daemon configuration with automatic restart
-- ✅ Configuration validation and backup/rollback on failure
+- Uses official Dokku bootstrap installation method
+- Idempotent installation (safe to run multiple times)
+- Modern Ubuntu support (20.04, 22.04, 24.04)
+- Supports latest Dokku versions (0.35.x)
+- Improved error handling and logging
+- Declarative plugin management
+- Supports both shortnames and full URLs for plugins
+- Modular Docker daemon configuration with automatic restart
+- Configuration validation and backup/rollback on failure
 
 ## Architecture
 
