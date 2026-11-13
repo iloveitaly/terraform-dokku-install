@@ -1,23 +1,22 @@
 # Install Dokku with Terraform
 
-OpenTofu/Terraform Module to install Docker, Dokku, and Dokku plugins on a server with SSH access using the official Dokku bootstrap script.
+This OpenTofu/Terraform module installs Docker, Dokku, and Dokku plugins on a server over SSH using the official Dokku bootstrap script.
 
-This pairs really well with a downstream Dokku provider for managing apps,
-services, and links on the installed instance. Active options on the OpenTofu
-registry:
+Use a downstream Dokku provider to manage apps, services, and links on the
+installed instance. Active options on the OpenTofu registry:
 
 - [`aliksend/dokku`](https://registry.opentofu.org/providers/aliksend/dokku) (v1.0.24+)
 - [`dimmkirr/dokku`](https://registry.opentofu.org/providers/dimmkirr/dokku) (v1.2.0+)
 - [`aaronstillwell/dokku`](https://github.com/aaronstillwell/terraform-provider-dokku)
 
-Note: their `dokku_plugin` resources only *verify* a plugin is installed —
-plugin install needs root, so plugin management stays in this module.
+Their `dokku_plugin` resources only verify that a plugin is installed.
+Installing plugins requires root access, so this module manages plugin installation.
 
 ## Features
 
-- Uses official Dokku bootstrap installation method
+- Uses the official Dokku bootstrap script
 - Idempotent installation (safe to run multiple times)
-- Modern Ubuntu support (20.04, 22.04, 24.04)
+- Supports Ubuntu 20.04, 22.04, and 24.04
 - Supports latest Dokku versions (0.35.x)
 - Improved error handling and logging
 - Declarative plugin management
@@ -27,17 +26,13 @@ plugin install needs root, so plugin management stays in this module.
 
 ## Architecture
 
-This module follows a modular design:
+The main module installs Dokku and its plugins and manages SSH keys. A separate
+submodule (`./modules/docker-daemon-config`) configures the Docker daemon after
+Docker is installed and before Dokku is installed. The submodule:
 
-- **Main Module**: Handles Dokku installation, SSH key management, and plugin installation
-- **Docker Daemon Config Module**: Separately manages Docker daemon configuration with automatic restart
-- **Clean Dependencies**: Docker config is applied after Docker installation but before Dokku installation
-
-The Docker daemon configuration is handled by a separate sub-module (`./modules/docker-daemon-config`) that:
-
-- Validates JSON configuration before applying
-- Creates backups of existing configuration
-- Restarts Docker daemon when configuration changes
+- Validates the JSON configuration before applying it
+- Backs up the existing configuration
+- Restarts the Docker daemon when the configuration changes
 - Automatically rolls back on failure
 - Provides detailed error handling
 
@@ -50,7 +45,7 @@ The Docker daemon configuration is handled by a separate sub-module (`./modules/
 
 ## Usage
 
-See `test/main.tf` for example usage of the module.
+See `test/main.tf` for an example.
 
 ### Example
 
@@ -73,7 +68,7 @@ module "dokku" {
 }
 ```
 
-### Example with Docker Daemon Configuration
+### Example with Docker daemon configuration
 
 ```hcl
 module "dokku" {
@@ -105,13 +100,14 @@ module "dokku" {
 }
 ```
 
-## Docker Daemon Configuration
+## Docker daemon configuration
 
-The `docker_daemon_config` variable allows you to customize Docker's behavior by providing a JSON configuration that will be written to `/etc/docker/daemon.json`. This is useful for:
+Set `docker_daemon_config` to a JSON configuration to customize Docker's behavior.
+The module writes it to `/etc/docker/daemon.json`.
 
-### Common Use Cases
+### Common use cases
 
-**Enable containerd snapshotter** (recommended for better performance and compatibility):
+Enable the containerd snapshotter (recommended for better performance and compatibility):
 
 ```hcl
 docker_daemon_config = jsonencode({
@@ -121,7 +117,7 @@ docker_daemon_config = jsonencode({
 })
 ```
 
-**Configure logging drivers and rotation**:
+Configure logging drivers and rotation:
 
 ```hcl
 docker_daemon_config = jsonencode({
@@ -133,7 +129,7 @@ docker_daemon_config = jsonencode({
 })
 ```
 
-**Set registry mirrors**:
+Set registry mirrors:
 
 ```hcl
 docker_daemon_config = jsonencode({
@@ -143,7 +139,7 @@ docker_daemon_config = jsonencode({
 })
 ```
 
-**Configure storage driver**:
+Configure the storage driver:
 
 ```hcl
 docker_daemon_config = jsonencode({
@@ -154,7 +150,7 @@ docker_daemon_config = jsonencode({
 })
 ```
 
-**Multiple configurations combined**:
+Combine several settings:
 
 ```hcl
 docker_daemon_config = jsonencode({
@@ -172,7 +168,8 @@ docker_daemon_config = jsonencode({
 })
 ```
 
-> **Note**: Docker daemon will be restarted automatically after applying the configuration. The JSON configuration is validated before being applied.
+The module validates the JSON before applying it, then restarts the Docker daemon
+automatically.
 
 ## Inputs
 
@@ -203,7 +200,7 @@ docker_daemon_config = jsonencode({
 | dokku\_version | The version of Dokku installed |
 | ssh\_host | The SSH host where Dokku is installed |
 
-## Related Projects
+## Related projects
 
 - [Dokku Terraform Install Script](https://github.com/dhinus/dokku-terraform/blob/master/scripts/install-dokku.sh)
 - [Original Terraform Dokku Project](https://github.com/brotandgames/terraform-dokku) - this project was my original inspiration
