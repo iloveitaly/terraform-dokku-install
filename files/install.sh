@@ -8,11 +8,7 @@ selector=$1 hostname=$2 allow_upgrade=$3
 version=$selector
 exec 9>/run/lock/terraform-dokku.lock
 flock -w 600 9 || { echo 'Timed out waiting for Dokku provisioning lock' >&2; exit 1; }
-# shellcheck disable=SC1091
-. /etc/os-release
-if [ "$ID" != ubuntu ] || ! [[ $VERSION_ID = 22.04 || $VERSION_ID = 24.04 ]]; then
-  echo 'Only Ubuntu 22.04 and 24.04 are supported' >&2; exit 1
-fi
+require_supported_ubuntu
 current=$(dpkg-query -W -f='${db:Status-Status} ${Version}' dokku 2>/dev/null || true)
 if [[ $current = installed\ * ]]; then
   current=${current#installed }

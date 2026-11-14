@@ -24,6 +24,7 @@ resource "terraform_data" "install_docker" {
     containerd_version = var.containerd_version
     runner             = filesha256(local.runner)
     script             = filesha256("${path.module}/files/install-docker.sh")
+    ubuntu_helper      = filesha256("${path.module}/files/ubuntu.sh")
   }
   provisioner "local-exec" {
     command = "python3 \"$DOKKU_RUNNER\""
@@ -31,7 +32,7 @@ resource "terraform_data" "install_docker" {
       DOKKU_RUNNER = local.runner
       DOKKU_REMOTE_PAYLOAD = jsonencode(merge(local.connection, {
         operation = "install_docker"
-        args      = { docker_version = var.docker_version, containerd_version = var.containerd_version }
+        args      = { docker_version = coalesce(var.docker_version, "auto"), containerd_version = coalesce(var.containerd_version, "auto") }
       }))
     }
   }
@@ -60,6 +61,7 @@ resource "terraform_data" "install" {
     allow_dokku_upgrade = var.allow_dokku_upgrade
     runner              = filesha256(local.runner)
     script              = filesha256("${path.module}/files/install.sh")
+    ubuntu_helper       = filesha256("${path.module}/files/ubuntu.sh")
   }
   provisioner "local-exec" {
     command = "python3 \"$DOKKU_RUNNER\""

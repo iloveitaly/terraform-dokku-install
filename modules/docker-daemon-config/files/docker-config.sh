@@ -27,6 +27,11 @@ cleanup() {
     else
       rm -f "$config" || echo 'Could not remove the newly created Docker configuration' >&2
     fi
+    # Failed candidate starts may exhaust systemd's start limit for both units.
+    # Clear their failed state only after restoring the previous configuration.
+    if ! systemctl reset-failed docker.service docker.socket; then
+      echo 'Could not reset Docker service or socket failure state' >&2
+    fi
     if ! systemctl restart docker || ! ready; then echo 'Rollback restart failed; investigate Docker manually' >&2; fi
     [ "$status" -ne 0 ] || status=1
   fi

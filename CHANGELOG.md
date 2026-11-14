@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+1. Support Ubuntu 26.04 in both installers using the official `resolute` package
+   repositories. Dokku continues to default to the latest stable package.
+2. Select fixed Docker/containerd defaults by target OS when their inputs are
+   unset or null: 28.5.2/1.7.28 on Ubuntu 22.04 and 24.04, and 29.4.3/2.2.5 on
+   Ubuntu 26.04. Explicit numeric versions remain strict pins.
+3. Extend the disposable integration harness to all three supported Ubuntu
+   releases, with configurable Dokku versions for upgrade testing. Add regression
+   coverage for OS gates, repository selection, automatic defaults, and overrides.
+4. Clear Docker's systemd service and socket failure states during configuration
+   rollback so a failed candidate cannot prevent recovery through restart limits.
+5. Share the Ubuntu policy between installers and reuse one Docker package list
+   for downgrade checks, apt preferences, installation, and verification. Track
+   the bundled helper in Terraform replacement triggers and archive checks.
+
+Upgrading from 0.1.0 reruns provisioning because installer script hashes changed.
+Existing Ubuntu 22.04 and 24.04 defaults resolve to the same package versions.
+
+Validated on a fresh Ubuntu 26.04 ARM64 OrbStack guest with Docker 29.4.3,
+containerd 2.2.5, and Dokku 0.38.33 to 0.38.34. The full integration run covered
+installation, idempotence, upgrades, plugins, hostname changes, key rotation and
+revocation, failed-configuration rollback, ownership replacement, and destroy
+after relocating the consumer. All 45 Python tests and 18 plan tests pass;
+packaged consumers pass with Terraform and OpenTofu.
+
 ## 0.1.0
 
 First tagged release of the Terraform/OpenTofu Dokku installer.

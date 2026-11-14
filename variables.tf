@@ -158,24 +158,22 @@ variable "management_id" {
 }
 
 variable "docker_version" {
-  description = "Docker Engine version to install."
+  description = "Docker Engine version to install. Null selects 28.5.2 on Ubuntu 22.04/24.04 or 29.4.3 on Ubuntu 26.04."
   type        = string
-  default     = "28.5.2"
-  nullable    = false
+  default     = null
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.docker_version))
-    error_message = "docker_version must be a numeric version such as 28.5.2."
+    condition     = var.docker_version == null ? true : can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.docker_version))
+    error_message = "docker_version must be null or a numeric version such as 28.5.2."
   }
 }
 
 variable "containerd_version" {
-  description = "containerd.io version to install."
+  description = "containerd.io version to install. Null selects 1.7.28 on Ubuntu 22.04/24.04 or 2.2.5 on Ubuntu 26.04."
   type        = string
-  default     = "1.7.28"
-  nullable    = false
+  default     = null
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.containerd_version))
-    error_message = "containerd_version must be a numeric version such as 1.7.28."
+    condition     = var.containerd_version == null ? true : can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.containerd_version))
+    error_message = "containerd_version must be null or a numeric version such as 1.7.28."
   }
 }
 

@@ -127,7 +127,12 @@ def build_request(payload):
     # The only remote shell command has a fixed executable and quoted arguments.
     remote_command = shlex.join(["sudo", "-n", "bash", "-s", "--", *remote_args])
     command += ["--", host, remote_command]
-    return command, (ROOT / SCRIPTS[operation]).read_text(), timeout
+    script = (ROOT / SCRIPTS[operation]).read_text()
+    if operation in {"install_docker", "install_dokku"}:
+        # Scripts arrive over stdin, so bundle the shared guard without relying
+        # on a module checkout or sourced helper file on the remote host.
+        script = (ROOT / "files/ubuntu.sh").read_text() + "\n" + script
+    return command, script, timeout
 
 
 def main():

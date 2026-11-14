@@ -57,6 +57,32 @@ fi''')
         self.assertEqual(self.config.read_text(), original)
         self.assertEqual(self.log.read_text().count('restart docker'), 2)
 
+    def test_rate_limited_units_are_reset_before_rollback_restart(self):
+        original = '{"log-driver":"json-file"}\n'
+        self.config.write_text(original)
+        self.env['RATE_LIMIT'] = str(self.root / 'rate-limit')
+        self.bin('systemctl', '''echo "$*" >> "$CALLS"
+if [ "$1" = reset-failed ]; then
+  [ "$2" = docker.service ] && [ "$3" = docker.socket ] || exit 2
+  rm -f "$RATE_LIMIT"
+  exit 0
+fi
+if [ "$1" = restart ]; then
+  if [ ! -f "$COUNT" ]; then
+    touch "$COUNT" "$RATE_LIMIT"
+    exit 1
+  fi
+  [ ! -f "$RATE_LIMIT" ] || exit 1
+fi
+exit 0''')
+        result = self.run_config('{"log-driver":"local"}')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.config.read_text(), original)
+        self.assertNotIn('Rollback restart failed', result.stderr)
+        calls = self.log.read_text().splitlines()
+        self.assertEqual(calls[:3], ['restart docker', 'reset-failed docker.service docker.socket', 'restart docker'])
+        self.assertIn('is-active --quiet docker', calls)
+
     def test_restart_failure_removes_new_config_if_none_existed(self):
         result = self.run_config('{"log-driver":"local"}')
         self.assertNotEqual(result.returncode, 0, result.stderr)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exercise a Git archive on a fresh, disposable Ubuntu 24.04 machine with passwordless sudo.
+# Exercise a Git archive on a fresh, disposable Ubuntu 22.04, 24.04, or 26.04 machine with passwordless sudo.
 # DOKKU_PACKAGE_REF selects the tracked Git ref to archive (default: HEAD).
 set -euo pipefail
 [ "${DOKKU_DISPOSABLE_HOST:-}" = yes ] || { echo 'Refusing to modify host: set DOKKU_DISPOSABLE_HOST=yes only on a disposable Ubuntu VM.' >&2; exit 1; }
@@ -34,8 +34,8 @@ if [ -n "${SSH_HOST:-}" ]; then
 else
   # shellcheck disable=SC1091
   . /etc/os-release
-  if [ "$ID" != ubuntu ] || [ "$VERSION_ID" != 24.04 ]; then
-    echo 'Integration requires Ubuntu 24.04.' >&2
+  if [ "$ID" != ubuntu ] || ! [[ $VERSION_ID = 22.04 || $VERSION_ID = 24.04 || $VERSION_ID = 26.04 ]]; then
+    echo 'Integration requires Ubuntu 22.04, 24.04, or 26.04.' >&2
     exit 1
   fi
   sudo -n true
@@ -64,7 +64,21 @@ else
 fi
 remote() { ssh -F /dev/null -p "$TF_VAR_ssh_port" -o IdentitiesOnly=yes -o ForwardAgent=no -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$TF_VAR_ssh_known_hosts_path" -i "$TF_VAR_ssh_private_key_path" "$TF_VAR_ssh_user@$TF_VAR_ssh_host" "$@"; }
 # shellcheck disable=SC2016
-remote 'sudo -n true && test "$(. /etc/os-release; echo "$VERSION_ID")" = 24.04'
+target_os=$(remote 'sudo -n true && . /etc/os-release && printf "%s %s\n" "$ID" "$VERSION_ID"')
+case "$target_os" in
+  'ubuntu 22.04'|'ubuntu 24.04')
+    initial_version=${DOKKU_TEST_INITIAL_VERSION:-0.35.19}
+    upgrade_version=${DOKKU_TEST_UPGRADE_VERSION:-0.35.20}
+    ;;
+  'ubuntu 26.04')
+    # Older packages need not exist for a new Ubuntu release. Use latest by
+    # default; explicit versions enable a distinct-version upgrade test.
+    initial_version=${DOKKU_TEST_INITIAL_VERSION:-latest}
+    upgrade_version=${DOKKU_TEST_UPGRADE_VERSION:-}
+    ;;
+  *) echo "Unsupported integration target: $target_os" >&2; exit 1 ;;
+esac
+export TF_VAR_dokku_version="$initial_version"
 # A known but incorrect host key must fail before installation.
 known_name=$TF_VAR_ssh_host
 if [ "$TF_VAR_ssh_port" != 22 ]; then known_name="[$known_name]:$TF_VAR_ssh_port"; fi
@@ -78,7 +92,11 @@ tf() { terraform -chdir="$consumer" "$@"; }
 apply() { tf apply -input=false -auto-approve; }
 tf init -input=false -backend-config="path=$work/terraform.tfstate"
 apply
-remote sudo dokku version | grep -F '0.35.19'
+initial_installed=$(remote "dpkg-query -W -f='\${Version}' dokku")
+if [ "$initial_version" != latest ] && [ "$initial_installed" != "$initial_version" ]; then
+  echo "Expected Dokku $initial_version; installed $initial_installed" >&2; exit 1
+fi
+remote sudo dokku version | grep -F "$initial_installed"
 remote sudo dokku ssh-keys:list | grep -F integration
 remote sudo dokku plugin:installed redis
 remote sudo git -C /var/lib/dokku/plugins/available/redis rev-parse HEAD | grep -Fx e9df51c60fc5e14a486fab6e740e35f110a00995
@@ -87,9 +105,13 @@ tf plan -input=false -detailed-exitcode > "$work/second-plan" 2>&1
 status=$?
 set -e
 [ "$status" = 0 ] || { cat "$work/second-plan"; echo 'Second plan was not a no-op' >&2; exit 1; }
-export TF_VAR_dokku_version=0.35.20 TF_VAR_allow_dokku_upgrade=true
-apply
-remote sudo dokku version | grep -F '0.35.20'
+if [ -n "$upgrade_version" ]; then
+  export TF_VAR_dokku_version="$upgrade_version" TF_VAR_allow_dokku_upgrade=true
+  apply
+  remote sudo dokku version | grep -F "$upgrade_version"
+else
+  echo 'Skipping distinct-version upgrade: set DOKKU_TEST_INITIAL_VERSION and DOKKU_TEST_UPGRADE_VERSION to available releases to exercise it.'
+fi
 export TF_VAR_dokku_version=latest TF_VAR_allow_dokku_upgrade=true
 apply
 expected_latest=$(remote apt-cache madison dokku | python3 -c 'import re,sys

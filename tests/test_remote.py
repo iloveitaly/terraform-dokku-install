@@ -66,6 +66,29 @@ class RemoteTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     remote.build_request(payload)
 
+    def test_ubuntu_guard_is_streamed_with_both_installers_only(self):
+        helper = (ROOT / 'files/ubuntu.sh').read_text().strip()
+        cases = [
+            ('install_docker', {'docker_version': 'auto', 'containerd_version': 'auto'}, 'files/install-docker.sh'),
+            ('install_dokku', {'version': 'latest', 'hostname': 'example.test', 'allow_upgrade': False}, 'files/install.sh'),
+        ]
+        for operation, args, script_path in cases:
+            with self.subTest(operation=operation):
+                _, script, _ = remote.build_request({**self.payload, 'operation': operation, 'args': args})
+                self.assertIn(helper, script)
+                self.assertIn((ROOT / script_path).read_text().strip(), script)
+                self.assertLess(script.index(helper), script.index('require_supported_ubuntu\n'))
+        other_cases = [
+            ('plugins', {'plugins': []}),
+            ('configure_docker', {'config': '{}', 'allow_storage_migration': False}),
+            ('ssh_key', {'management_id': 'scope', 'public_key_path': None}),
+            ('ssh_key_revoke', {'management_id': 'scope'}),
+        ]
+        for operation, args in other_cases:
+            with self.subTest(operation=operation):
+                _, script, _ = remote.build_request({**self.payload, 'operation': operation, 'args': args})
+                self.assertNotIn(helper, script)
+
     def test_main_returns_ssh_failure_and_streams_script(self):
         with patch.dict(os.environ, {'DOKKU_REMOTE_PAYLOAD': json.dumps(self.payload)}), patch.object(remote.subprocess, 'run') as run:
             run.return_value.returncode = 23

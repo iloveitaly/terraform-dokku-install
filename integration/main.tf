@@ -28,7 +28,7 @@ variable "dokku_hostname" {
 }
 variable "dokku_version" {
   type    = string
-  default = "0.35.19"
+  default = "latest"
 }
 variable "allow_dokku_upgrade" {
   type    = bool

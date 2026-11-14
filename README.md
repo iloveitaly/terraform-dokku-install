@@ -38,7 +38,8 @@ before registry indexing is complete.
 
 Run Terraform from macOS or Linux with Terraform or OpenTofu >= 1.10,
 Python >= 3.9, and OpenSSH installed.
-The target must run Ubuntu 22.04 or 24.04 with systemd, SSH, and passwordless sudo.
+The target must run Ubuntu 22.04, 24.04, or 26.04 with systemd, SSH, and
+passwordless sudo.
 SSH must be reachable before applying; the installer waits for cloud-init once
 connected.
 The module uses Terraform's built-in `terraform_data` resource and requires no
@@ -143,8 +144,24 @@ reconciliation attempts.
 
 Dokku defaults to `dokku_version = "latest"`, which resolves the highest stable
 numeric release available from the official Dokku apt repository during a fresh
-installation. Set an exact version such as `"0.35.20"` for reproducible installs.
-The Docker Engine and containerd defaults remain 28.5.2 and 1.7.28.
+installation. Set an exact version such as `"0.38.34"` for reproducible installs.
+Docker Engine and containerd default to fixed versions selected for the target OS:
+
+| Target | Docker Engine | containerd.io |
+| --- | --- | --- |
+| Ubuntu 22.04 / 24.04 | 28.5.2 | 1.7.28 |
+| Ubuntu 26.04 | 29.4.3 | 2.2.5 |
+
+Leave `docker_version` and `containerd_version` unset or null to use these defaults.
+Set numeric versions to override either pin. The older defaults are unavailable
+in the Ubuntu 26.04 repository; explicit pins must exist for the target release.
+Likewise, older Dokku versions may be unavailable on 26.04; `latest` selects a
+stable package from that release's official repository.
+
+Upgrading from module 0.1.0 reruns provisioning once because the installer scripts
+changed, including when versions are explicitly pinned. Default inputs also
+change to null. Ubuntu 22.04 and 24.04 retain their previous default package
+versions.
 Docker and containerd inputs select upstream versions; the installer resolves and
 installs matching distribution packages, verifies them, and pins them against
 unrelated apt upgrades. Dokku installs an exact package version. Package availability
@@ -267,6 +284,9 @@ interface also changed. Plan the migration before applying to an existing server
 
 ## Validation and integration tests
 
+Both installers use the Ubuntu policy in `files/ubuntu.sh`. The SSH runner bundles
+it with each installer, and Terraform tracks changes to the helper's content.
+
 ```sh
 terraform init -backend=false
 terraform fmt -check -recursive
@@ -290,7 +310,8 @@ not part of `git archive`.
 latest upgrades, plugin failures, hostname changes, key rotation and revocation,
 host-key rejection, Docker rollback, ownership replacement, and destroy-time key
 revocation. It requires Terraform, Python, OpenSSH, and a fresh disposable Ubuntu
-24.04 target. The script creates temporary controller keys and state for the test.
+22.04, 24.04, or 26.04 target. The script creates temporary controller keys and
+state for the test.
 It consumes a tracked Git archive of `HEAD`, or the ref supplied through
 `DOKKU_PACKAGE_REF`, and moves its consumer and module cache before destroy to
 check that revocation works from a new checkout path.
@@ -307,22 +328,30 @@ DOKKU_DISPOSABLE_HOST=yes SSH_HOST=192.0.2.10 SSH_USER=ubuntu \
 `SSH_PORT` is optional and defaults to 22. The key paths must exist on the
 controller, and known_hosts must match the host and port used by the test.
 
+On 22.04 and 24.04 the test installs Dokku 0.35.19, upgrades to 0.35.20, then
+selects `latest`. On 26.04 it starts with `latest` and skips the distinct-version
+upgrade by default. Set `DOKKU_TEST_INITIAL_VERSION` and
+`DOKKU_TEST_UPGRADE_VERSION` to available numeric releases to exercise that path;
+the 26.04 live run used 0.38.33 and 0.38.34.
+
 When `SSH_HOST` is unset, the script modifies the machine on which it runs. That
 mode installs packages, configures localhost SSH access, and appends a temporary
 key to the current user's `authorized_keys`. Use it only on a disposable Ubuntu
-24.04 runner. In GitHub Actions, run the `Validate` workflow manually with the
-`integration` input enabled; the default is disabled.
+22.04, 24.04, or 26.04 runner. In GitHub Actions, run the `Validate` workflow
+manually with the `integration` input enabled to test its Ubuntu 24.04 runner;
+the default is disabled.
 
 The script creates and destroys Terraform resource records, but leaves installed
 software and test-host changes in place. It does not create or delete a VM. Delete
 your disposable VM after inspecting the results. Successful runs remove temporary
 controller files; failed runs print their retained artifact directory for diagnosis.
 
-Ubuntu 22.04 is accepted by the installer; the live integration fixture targets
-24.04. Minimum and current CLI versions are checked separately in CI.
+Ubuntu 22.04 is accepted by the installer. Minimum and current CLI versions are
+checked separately in CI.
 
 | Target | Docker / containerd | Dokku | Verification |
 | --- | --- | --- | --- |
+| Ubuntu 26.04, ARM64 (OrbStack) | 29.4.3 / 2.2.5 | 0.38.33 → 0.38.34 (`latest` at test time) | Live installation, no-op plan, upgrades, hostname, plugins, keys, rollback through systemd restart limits, and relocated destroy |
 | Ubuntu 24.04, ARM64 | 28.5.2 / 1.7.28 | 0.35.19 → 0.35.20 → 0.38.34 (`latest` at test time) | Live installation, no-op plan, upgrades, hostname, plugins, keys, rollback, and destroy |
 | Ubuntu 22.04 | Configurable | Configurable | Accepted by the installer; not live-tested in this run |
 
@@ -352,9 +381,9 @@ terraform-docs -c .terraform-docs.yml modules/docker-daemon-config
 |------|-------------|------|---------|:--------:|
 | allow\_dokku\_upgrade | Allow changing an already installed Dokku version. | `bool` | `false` | no |
 | allow\_storage\_migration | Allow changes to Docker storage configuration on an existing Docker installation. | `bool` | `false` | no |
-| containerd\_version | containerd.io version to install. | `string` | `"1.7.28"` | no |
+| containerd\_version | containerd.io version to install. Null selects 1.7.28 on Ubuntu 22.04/24.04 or 2.2.5 on Ubuntu 26.04. | `string` | `null` | no |
 | docker\_daemon\_config | Optional JSON object to write to /etc/docker/daemon.json. | `string` | `null` | no |
-| docker\_version | Docker Engine version to install. | `string` | `"28.5.2"` | no |
+| docker\_version | Docker Engine version to install. Null selects 28.5.2 on Ubuntu 22.04/24.04 or 29.4.3 on Ubuntu 26.04. | `string` | `null` | no |
 | dokku\_hostname | Dokku hostname | `string` | `"dokku.yourhost.com"` | no |
 | dokku\_plugin\_definitions | Explicit plugins keyed by Dokku plugin name, each with an HTTPS Git URL and optional revision. | <pre>map(object({<br/>    url      = string<br/>    revision = optional(string)<br/>  }))</pre> | `{}` | no |
 | dokku\_plugins | Legacy list of known plugin short names or HTTPS Git repository URLs. | `list(string)` | `[]` | no |

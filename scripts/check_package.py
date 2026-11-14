@@ -18,7 +18,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 REQUIRED = {
     'main.tf', 'versions.tf', 'variables.tf', 'outputs.tf', 'plugins.tf',
-    'scripts/remote.py', 'files/install.sh', 'files/install-docker.sh',
+    'scripts/remote.py', 'files/ubuntu.sh', 'files/install.sh', 'files/install-docker.sh',
     'files/plugins.sh', 'files/ssh-key.sh',
     'modules/docker-daemon-config/main.tf', 'modules/docker-daemon-config/variables.tf',
     'modules/docker-daemon-config/outputs.tf', 'modules/docker-daemon-config/versions.tf',
@@ -116,6 +116,10 @@ with open(os.environ['PACKAGE_SSH_LOG'],'a') as log:
         before = [json.loads(line) for line in log.read_text().splitlines()]
         if not before or not any(' NAME=' in item['script'] for item in before):
             raise RuntimeError('Fake SSH did not receive the key registration script')
+        for marker in ('docker_requested=', 'old_hostname='):
+            streamed = [item['script'] for item in before if marker in item['script']]
+            if len(streamed) != 1 or 'require_supported_ubuntu()' not in streamed[0]:
+                raise RuntimeError(f'Fake SSH did not receive Ubuntu guard with installer {marker}')
         relocated = root / 'relocated-consumer'
         shutil.move(str(initial), relocated)
         if initial.exists():

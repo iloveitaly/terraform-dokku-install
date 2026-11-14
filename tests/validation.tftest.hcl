@@ -19,6 +19,10 @@ run "valid_defaults" {
     condition     = terraform_data.install.triggers_replace.version == "latest" && terraform_data.install.triggers_replace.hostname == "dokku.yourhost.com"
     error_message = "The install resource must track the requested version and hostname."
   }
+  assert {
+    condition     = terraform_data.install_docker.triggers_replace.ubuntu_helper == filesha256("${path.module}/files/ubuntu.sh") && terraform_data.install.triggers_replace.ubuntu_helper == filesha256("${path.module}/files/ubuntu.sh")
+    error_message = "Both installation resources must track changes to the shared Ubuntu policy."
+  }
 }
 
 run "reject_version" {
@@ -102,4 +106,40 @@ run "valid_pinned_version" {
     condition     = output.dokku_version == "0.35.20"
     error_message = "An explicit pinned version must be preserved in the output."
   }
+}
+
+run "automatic_docker_package_defaults" {
+  command = plan
+  variables {
+    docker_version     = null
+    containerd_version = null
+  }
+  assert {
+    condition     = terraform_data.install_docker.triggers_replace.docker_version == null && terraform_data.install_docker.triggers_replace.containerd_version == null
+    error_message = "Null Docker and containerd versions must select automatic defaults."
+  }
+}
+
+run "explicit_docker_package_versions" {
+  command = plan
+  variables {
+    docker_version     = "29.4.3"
+    containerd_version = "2.2.5"
+  }
+  assert {
+    condition     = terraform_data.install_docker.triggers_replace.docker_version == "29.4.3" && terraform_data.install_docker.triggers_replace.containerd_version == "2.2.5"
+    error_message = "Explicit Docker and containerd versions must be retained."
+  }
+}
+
+run "reject_invalid_docker_version" {
+  command = plan
+  variables { docker_version = "29.4.3;bad" }
+  expect_failures = [var.docker_version]
+}
+
+run "reject_invalid_containerd_version" {
+  command = plan
+  variables { containerd_version = "2.2.5;bad" }
+  expect_failures = [var.containerd_version]
 }

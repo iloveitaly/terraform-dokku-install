@@ -51,8 +51,10 @@ done''')
         self.bin('dokku', '''echo "dokku $*" >> "$CALLS"
 if [ "$1" = version ]; then cat "$STATE"; fi''')
         os_release = self.root / 'os-release'
+        self.os_release = os_release
         os_release.write_text('ID=ubuntu\nVERSION_ID=24.04\nVERSION_CODENAME=noble\n')
-        script = SCRIPT.read_text().replace('/run/lock/terraform-dokku.lock', str(self.root / 'lock'))
+        script = ((ROOT / 'files/ubuntu.sh').read_text() + '\n' + SCRIPT.read_text())
+        script = script.replace('/run/lock/terraform-dokku.lock', str(self.root / 'lock'))
         script = script.replace('/root/terraform-dokku.', str(self.root / 'terraform-dokku.'))
         script = script.replace('/home/dokku', str(self.root / 'home'))
         script = script.replace('/etc/apt', str(self.root / 'apt'))
@@ -76,6 +78,21 @@ command() {
             self.env['FAKE_INSTALLED'] = 'true'
         return subprocess.run(['bash', str(self.script), version, 'dokku.example.test',
                                str(upgrade).lower()], env=self.env, capture_output=True, text=True)
+
+    def test_supported_ubuntu_versions_and_other_releases(self):
+        for version, codename in [('22.04', 'jammy'), ('24.04', 'noble'), ('26.04', 'resolute')]:
+            with self.subTest(version=version):
+                self.os_release.write_text(f'ID=ubuntu\nVERSION_ID={version}\nVERSION_CODENAME={codename}\n')
+                result = self.run_install('0.35.9')
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(f'ubuntu/ {codename} main', (self.root / 'apt/sources.list.d/dokku.list').read_text())
+        for distro, version in [('ubuntu', '25.10'), ('debian', '26.04')]:
+            with self.subTest(distro=distro, version=version):
+                self.os_release.write_text(f'ID={distro}\nVERSION_ID={version}\nVERSION_CODENAME=other\n')
+                self.log.unlink(missing_ok=True)
+                result = self.run_install('0.35.9')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(self.log.exists())
 
     def test_fresh_latest_selects_highest_stable_version(self):
         result = self.run_install('latest')
