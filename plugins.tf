@@ -1,8 +1,3 @@
-# Dokku Plugin Management
-#
-# `dokku plugin:install` is idempotent server-side, so we only need triggers
-# keyed on name+url — no remote-state discovery required.
-
 locals {
   plugin_urls = {
     postgres      = "https://github.com/dokku/dokku-postgres.git"
@@ -18,31 +13,46 @@ locals {
     typesense     = "https://github.com/dokku/dokku-typesense.git"
   }
 
-  desired_plugins = [for plugin in var.dokku_plugins : {
-    name = contains(keys(local.plugin_urls), plugin) ? plugin : trimsuffix(basename(plugin), ".git")
-    url  = contains(keys(local.plugin_urls), plugin) ? local.plugin_urls[plugin] : plugin
+  legacy_plugins = [for plugin in var.dokku_plugins : {
+    name     = contains(keys(local.plugin_urls), plugin) ? plugin : trimprefix(trimsuffix(basename(plugin), ".git"), "dokku-")
+    url      = lookup(local.plugin_urls, plugin, plugin)
+    revision = null
   }]
+  explicit_plugins = [for name, plugin in var.dokku_plugin_definitions : {
+    name     = name
+    url      = plugin.url
+    revision = plugin.revision
+  }]
+  desired_plugins = concat(local.legacy_plugins, local.explicit_plugins)
 }
 
-resource "ssh_resource" "install_plugin" {
-  for_each = { for plugin in local.desired_plugins : plugin.name => plugin }
-
-  host        = var.ssh_host
-  user        = var.ssh_user
-  private_key = local.ssh_private_key
-  timeout     = "10m"
-
-  triggers = {
-    plugin_name = each.value.name
-    plugin_url  = each.value.url
+# A single operation serializes mutations of Dokku's global plugin registry.
+resource "terraform_data" "plugins" {
+  triggers_replace = {
+    installation = terraform_data.install.id
+    plugins      = local.desired_plugins
+    runner       = filesha256(local.runner)
+    script       = filesha256("${path.module}/files/plugins.sh")
   }
-
-  commands = [
-    "echo 'Installing Dokku plugin: ${each.value.name} from ${each.value.url}'",
-    # `dokku plugin:install` is a no-op if already installed at the same URL.
-    "sudo dokku plugin:install ${each.value.url} --name ${each.value.name} || true",
-    "echo 'Plugin ready: ${each.value.name}'",
-  ]
-
-  depends_on = [ssh_resource.install]
+  lifecycle {
+    precondition {
+      condition     = length(distinct([for p in local.desired_plugins : p.name])) == length(local.desired_plugins)
+      error_message = "Plugin names must be unique after normalizing legacy plugin URLs."
+    }
+    precondition {
+      condition     = alltrue([for p in local.legacy_plugins : can(regex("^https://", p.url)) && can(regex("^[a-z][a-z0-9-]*$", p.name))])
+      error_message = "Unknown plugin short name or invalid normalized plugin name; use a supported short name or an explicit plugin definition."
+    }
+  }
+  provisioner "local-exec" {
+    command = "python3 \"$DOKKU_RUNNER\""
+    environment = {
+      DOKKU_RUNNER = local.runner
+      DOKKU_REMOTE_PAYLOAD = jsonencode(merge(local.connection, {
+        operation = "plugins"
+        args      = { plugins = local.desired_plugins, remove_unlisted = false }
+      }))
+    }
+  }
+  depends_on = [terraform_data.install]
 }

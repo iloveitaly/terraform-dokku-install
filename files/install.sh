@@ -1,82 +1,66 @@
 #!/usr/bin/env bash
-#
-# id: bash_install_dokku
-# description: Install Dokku using official bootstrap script in an idempotent way
-#
-# Resources
-# - Dokku Official Installation Guide
-#   https://dokku.com/docs/getting-started/installation/
-#
-
 set -euo pipefail
-
-self=${0##*/}
-log() {
-  echo "== $self $1"
-}
-
-DOKKU_VERSION="$1"
-DOKKU_HOSTNAME="$2"
-
-# Validate required parameters
-if [ -z "$DOKKU_VERSION" ]; then
-    echo "ERROR: DOKKU_VERSION (first argument) is required but not provided" >&2
-    echo "Usage: $0 <dokku_version> <dokku_hostname>" >&2
-    echo "Example: $0 0.35.20 dokku.example.com" >&2
-    exit 1
-fi
-
-if [ -z "$DOKKU_HOSTNAME" ]; then
-    echo "ERROR: DOKKU_HOSTNAME (second argument) is required but not provided" >&2
-    echo "Usage: $0 <dokku_version> <dokku_hostname>" >&2
-    echo "Example: $0 0.35.20 dokku.example.com" >&2
-    exit 1
-fi
-
-log "DOKKU_VERSION=$DOKKU_VERSION"
-log "DOKKU_HOSTNAME=$DOKKU_HOSTNAME"
-
-log "Waiting for 20 seconds for cloud-init to finish ..."
-sleep 20
-
-log "Update package list ..."
-sudo apt-get update -qq >/dev/null
-
-log "Install prerequisites ..."
-sudo apt-get install -qq -y apt-transport-https ca-certificates curl gnupg lsb-release
-
-log "Install docker using official script ..."
-if ! command -v docker &> /dev/null; then
-    curl -fsSL https://get.docker.com | sudo sh
-    sudo systemctl enable docker
-    sudo systemctl start docker
+[ "$(id -u)" = 0 ] || { echo 'Run as root' >&2; exit 1; }
+[ "$#" = 3 ] && [[ ( $1 = latest || $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ) && $2 =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]] && [[ $3 = true || $3 = false ]] || { echo 'Usage: install <version> <hostname> <allow-upgrade>' >&2; exit 1; }
+selector=$1 hostname=$2 allow_upgrade=$3
+version=$selector
+exec 9>/run/lock/terraform-dokku.lock
+flock -w 600 9 || { echo 'Timed out waiting for Dokku provisioning lock' >&2; exit 1; }
+# shellcheck disable=SC1091
+. /etc/os-release
+[ "$ID" = ubuntu ] && [[ $VERSION_ID = 22.04 || $VERSION_ID = 24.04 ]] || { echo 'Only Ubuntu 22.04 and 24.04 are supported' >&2; exit 1; }
+current=$(dpkg-query -W -f='${db:Status-Status} ${Version}' dokku 2>/dev/null || true)
+if [[ $current = installed\ * ]]; then
+  current=${current#installed }
+  if [ "$selector" != latest ] && dpkg --compare-versions "$current" gt "$version"; then echo "Dokku downgrade from $current to $version is not supported" >&2; exit 1; fi
+  if [ "$selector" != latest ] && dpkg --compare-versions "$current" lt "$version" && [ "$allow_upgrade" != true ]; then echo "Dokku upgrade from $current to $version requires allow_dokku_upgrade" >&2; exit 1; fi
+elif command -v dokku >/dev/null; then
+  echo 'Existing Dokku is not managed by dpkg; refusing to replace it' >&2; exit 1
 else
-    log "Docker already installed, skipping..."
+  current=
 fi
-
-log "Install dokku using official bootstrap script ..."
-if ! command -v dokku &> /dev/null; then
-    # Set environment variables for unattended installation
-    export DOKKU_TAG="$DOKKU_VERSION"
-    export DOKKU_VHOST_ENABLE=true
-    export DOKKU_WEB_CONFIG=false
-    export DOKKU_HOSTNAME="$DOKKU_HOSTNAME"
-    export DOKKU_SKIP_KEY_FILE=true
-    
-    # Download and run the bootstrap script
-    log "Downloading Dokku bootstrap script for version ${DOKKU_VERSION}..."
-    if ! curl -fsSL "https://dokku.com/install/v${DOKKU_VERSION}/bootstrap.sh" -o bootstrap.sh; then
-      echo "Download of dokku install script failed!" >&2
-      exit 1
+# Update the global domain only when it still represents the previous hostname.
+old_hostname=$(cat /home/dokku/HOSTNAME 2>/dev/null || true)
+if [ -f /home/dokku/VHOST ]; then
+  old_domains=$(cat /home/dokku/VHOST)
+  if [ -n "$old_domains" ] && [ "$old_domains" != "$hostname" ] && [ "$old_domains" != "$old_hostname" ]; then
+    echo 'Global domains were customized; refusing to overwrite them while changing hostname' >&2
+    exit 1
+  fi
+fi
+export DEBIAN_FRONTEND=noninteractive
+work=$(mktemp -d /root/terraform-dokku.XXXXXXXX)
+trap 'rm -rf "$work"' EXIT
+install -d -m 0755 /etc/apt/keyrings
+curl -fsSL --retry 3 https://packagecloud.io/dokku/dokku/gpgkey -o "$work/dokku.asc"
+install -m 0644 "$work/dokku.asc" /etc/apt/keyrings/dokku.asc
+printf 'deb [signed-by=/etc/apt/keyrings/dokku.asc] https://packagecloud.io/dokku/dokku/ubuntu/ %s main\n' "$VERSION_CODENAME" > /etc/apt/sources.list.d/dokku.list
+printf 'dokku dokku/vhost_enable boolean true\ndokku dokku/hostname string %s\ndokku dokku/skip_key_file boolean true\n' "$hostname" | debconf-set-selections
+apt-get -o DPkg::Lock::Timeout=600 update
+if [ "$selector" = latest ]; then
+  if [ -n "$current" ] && [ "$allow_upgrade" = false ]; then
+    version=$current
+    echo "Keeping installed Dokku $version; upgrades require allow_dokku_upgrade"
+  else
+    available=$(apt-cache madison dokku)
+    version=
+    while IFS= read -r candidate; do
+      [[ $candidate =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+      if [ -z "$version" ] || dpkg --compare-versions "$candidate" gt "$version"; then version=$candidate; fi
+    done < <(printf '%s\n' "$available" | awk -F '|' '$3 ~ /https:\/\/packagecloud[.]io\/dokku\/dokku\/ubuntu([\/[:space:]]|$)/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}')
+    [ -n "$version" ] || { echo 'No stable Dokku package version found in the official apt repository' >&2; exit 1; }
+    if [ -n "$current" ] && dpkg --compare-versions "$current" gt "$version"; then
+      echo "Keeping installed Dokku $current, which is newer than the latest available stable package $version"
+      version=$current
     fi
-    
-    log "Running bootstrap.sh..."
-    sudo DOKKU_TAG="$DOKKU_VERSION" bash bootstrap.sh
-    
-    log "Cleaning up bootstrap.sh..."
-    rm -f bootstrap.sh
-else
-    log "Dokku already installed, skipping..."
+    echo "Selected Dokku $version"
+  fi
 fi
-
-log "Dokku installation completed successfully!"
+apt-get -o DPkg::Lock::Timeout=600 install -y "dokku=$version"
+[ "$(dpkg-query -W -f='${Version}' dokku)" = "$version" ] || { echo 'Installed Dokku package version does not match' >&2; exit 1; }
+dokku plugin:install-dependencies --core
+installed=$(dokku version | tr -d '\r')
+[[ $installed = "$version" || $installed = "dokku version $version" ]] || { echo "Unexpected Dokku version: $installed" >&2; exit 1; }
+dokku domains:set-global "$hostname"
+printf '%s\n' "$hostname" > "$work/HOSTNAME"
+install -o dokku -g dokku -m 0644 "$work/HOSTNAME" /home/dokku/HOSTNAME

@@ -1,0 +1,20 @@
+formatter: markdown table
+content: |-
+  {{ .Requirements }}
+
+  {{ .Modules }}
+
+  {{ .Inputs }}
+
+  {{ .Outputs }}
+output:
+  file: README.md
+  mode: inject
+  template: |-
+    <!-- BEGIN_TF_DOCS -->
+    {{ .Content }}
+    <!-- END_TF_DOCS -->
+settings:
+  anchor: false
+  escape: true
+  hide-empty: true

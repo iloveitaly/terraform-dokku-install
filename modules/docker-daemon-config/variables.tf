@@ -1,25 +1,42 @@
-variable "ssh_host" {
-  description = "SSH host where Docker daemon configuration should be applied"
+variable "connection" {
+  description = "SSH connection settings."
+  type = object({
+    host              = string
+    user              = string
+    port              = number
+    known_hosts_path  = string
+    private_key_path  = string
+    operation_timeout = number
+  })
+}
+variable "server_identity" {
+  description = "Identity of the server being configured."
+  type = object({
+    id       = string
+    revision = string
+    host     = string
+    user     = string
+    port     = number
+  })
+}
+variable "runner" {
+  description = "Absolute path to the SSH runner."
   type        = string
 }
-
-variable "ssh_user" {
-  description = "SSH user for connecting to the host"
+variable "install_id" {
+  description = "Docker installation resource ID."
   type        = string
 }
-
-variable "ssh_private_key_path" {
-  description = "Path to SSH private key for authentication"
-  type        = string
+variable "allow_storage_migration" {
+  description = "Allow changes to Docker storage configuration."
+  type        = bool
+  default     = false
 }
-
 variable "docker_daemon_config" {
-  description = "Docker daemon configuration as JSON string to be written to /etc/docker/daemon.json"
+  description = "JSON object to write to /etc/docker/daemon.json."
   type        = string
-
   validation {
-    condition     = can(jsondecode(var.docker_daemon_config))
-    error_message = "The docker_daemon_config must be a valid JSON string."
+    condition     = can(keys(jsondecode(var.docker_daemon_config)))
+    error_message = "docker_daemon_config must be a JSON object."
   }
 }
-

@@ -1,0 +1,79 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      integration:
+        description: Run destructive integration checks on a fresh disposable runner
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tool: terraform
+            version: 1.10.5
+          - tool: terraform
+            version: 1.17.1
+          - tool: tofu
+            version: 1.10.0
+          - tool: tofu
+            version: 1.13.9
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - if: matrix.tool == 'terraform'
+        uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          terraform_version: ${{ matrix.version }}
+          terraform_wrapper: false
+      - if: matrix.tool == 'tofu'
+        uses: opentofu/setup-opentofu@v1.0.7
+        with:
+          tofu_version: ${{ matrix.version }}
+          tofu_wrapper: false
+      - run: ${{ matrix.tool }} fmt -check -recursive
+      - run: ${{ matrix.tool }} init -backend=false -input=false
+      - run: ${{ matrix.tool }} validate
+      - run: ${{ matrix.tool }} test
+      - run: python3 scripts/check_package.py --ref HEAD --cli ${{ matrix.tool }}
+      - run: ${{ matrix.tool }} -chdir=integration init -backend=false -input=false
+      - run: ${{ matrix.tool }} -chdir=integration validate
+      - run: python3 -m unittest discover -s tests -v
+      - run: shellcheck files/*.sh modules/docker-daemon-config/files/*.sh integration/run.sh
+
+  documentation:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - name: Install terraform-docs 0.20.0
+        run: |
+          curl -fsSL --retry 3 https://github.com/terraform-docs/terraform-docs/releases/download/v0.20.0/terraform-docs-v0.20.0-linux-amd64.tar.gz -o /tmp/terraform-docs.tar.gz
+          echo '34ae01772412bb11474e6718ea62113e38ff5964ee570a98c69fafe3a6dff286  /tmp/terraform-docs.tar.gz' | sha256sum --check
+          tar -xzf /tmp/terraform-docs.tar.gz -C /tmp terraform-docs
+          sudo install -m 0755 /tmp/terraform-docs /usr/local/bin/terraform-docs
+      - run: terraform-docs --output-check .
+      - run: terraform-docs -c .terraform-docs.yml --output-check modules/docker-daemon-config
+
+  integration:
+    if: github.event_name == 'workflow_dispatch' && inputs.integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          terraform_version: 1.10.5
+          terraform_wrapper: false
+      - name: Exercise installation on disposable runner
+        run: integration/run.sh
+        env:
+          DOKKU_DISPOSABLE_HOST: 'yes'
