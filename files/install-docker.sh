@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo 'Run as root' >&2; exit 1; }
-[ "$#" = 2 ] && [[ $1 =~ ^[0-9a-zA-Z.+:~_-]+$ && $2 =~ ^[0-9a-zA-Z.+:~_-]+$ ]] || { echo 'Usage: install-docker <docker-ce upstream version> <containerd.io upstream version>' >&2; exit 1; }
+if [ "$#" != 2 ] || ! [[ $1 =~ ^[0-9a-zA-Z.+:~_-]+$ && $2 =~ ^[0-9a-zA-Z.+:~_-]+$ ]]; then
+  echo 'Usage: install-docker <docker-ce upstream version> <containerd.io upstream version>' >&2; exit 1
+fi
 exec 9>/run/lock/terraform-dokku.lock
 flock -w 600 9 || { echo 'Timed out waiting for Dokku provisioning lock' >&2; exit 1; }
 if command -v cloud-init >/dev/null; then timeout 600 cloud-init status --wait || { echo 'cloud-init did not finish successfully' >&2; exit 1; }; fi
 # shellcheck disable=SC1091
 . /etc/os-release
-[ "$ID" = ubuntu ] && [[ $VERSION_ID = 22.04 || $VERSION_ID = 24.04 ]] || { echo 'Only Ubuntu 22.04 and 24.04 are supported' >&2; exit 1; }
+if [ "$ID" != ubuntu ] || ! [[ $VERSION_ID = 22.04 || $VERSION_ID = 24.04 ]]; then
+  echo 'Only Ubuntu 22.04 and 24.04 are supported' >&2; exit 1
+fi
 export DEBIAN_FRONTEND=noninteractive
 apt-get -o DPkg::Lock::Timeout=600 update
 apt-get -o DPkg::Lock::Timeout=600 install -y ca-certificates curl python3 util-linux
@@ -55,6 +59,8 @@ Pin-Priority: 990
 PREF
 install -m 0644 "$work/docker.pref" /etc/apt/preferences.d/terraform-dokku-docker
 apt-get -o DPkg::Lock::Timeout=600 install -y "docker-ce=$docker_version" "docker-ce-cli=$cli_version" "containerd.io=$containerd_version"
-[ "$(dpkg-query -W -f='${Version}' docker-ce)" = "$docker_version" ] && [ "$(dpkg-query -W -f='${Version}' docker-ce-cli)" = "$cli_version" ] && [ "$(dpkg-query -W -f='${Version}' containerd.io)" = "$containerd_version" ] || { echo 'Installed Docker package versions do not match' >&2; exit 1; }
+if [ "$(dpkg-query -W -f='${Version}' docker-ce)" != "$docker_version" ] || [ "$(dpkg-query -W -f='${Version}' docker-ce-cli)" != "$cli_version" ] || [ "$(dpkg-query -W -f='${Version}' containerd.io)" != "$containerd_version" ]; then
+  echo 'Installed Docker package versions do not match' >&2; exit 1
+fi
 systemctl enable --now docker
 docker info >/dev/null

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo 'Run as root' >&2; exit 1; }
-[ "$#" = 2 ] && [[ $2 = true || $2 = false ]] || { echo 'Usage: configure <base64-json> <allow-storage-migration>' >&2; exit 1; }
+if [ "$#" != 2 ] || ! [[ $2 = true || $2 = false ]]; then
+  echo 'Usage: configure <base64-json> <allow-storage-migration>' >&2; exit 1
+fi
 exec 9>/run/lock/terraform-dokku.lock
 flock -w 600 9 || { echo 'Timed out waiting for Dokku provisioning lock' >&2; exit 1; }
 umask 077
@@ -68,7 +70,9 @@ if changed:
 PY
 fi
 if [ -e "$config" ]; then
-  [ -f "$config" ] && [ ! -L "$config" ] || { echo 'Docker config must be a regular file' >&2; exit 1; }
+  if [ ! -f "$config" ] || [ -L "$config" ]; then
+    echo 'Docker config must be a regular file' >&2; exit 1
+  fi
   cp -p "$config" "$work/old.json"
   cp -p "$config" /etc/docker/daemon.json.bak
   had_config=true

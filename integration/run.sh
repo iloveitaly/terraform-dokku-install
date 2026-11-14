@@ -34,7 +34,10 @@ if [ -n "${SSH_HOST:-}" ]; then
 else
   # shellcheck disable=SC1091
   . /etc/os-release
-  [ "$ID" = ubuntu ] && [ "$VERSION_ID" = 24.04 ] || { echo 'Integration requires Ubuntu 24.04.' >&2; exit 1; }
+  if [ "$ID" != ubuntu ] || [ "$VERSION_ID" != 24.04 ]; then
+    echo 'Integration requires Ubuntu 24.04.' >&2
+    exit 1
+  fi
   sudo -n true
   TF_VAR_ssh_user=$(id -un)
   export TF_VAR_ssh_user TF_VAR_ssh_host=127.0.0.1 TF_VAR_ssh_private_key_path="$work/access" TF_VAR_ssh_known_hosts_path="$work/known_hosts"
