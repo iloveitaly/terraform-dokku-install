@@ -67,3 +67,7 @@ Destroy removes the Terraform records and revokes a deploy key owned by this
 module, if one was configured. Docker, Dokku, plugins, and daemon configuration
 remain installed. See [versions and upgrades](../../README.md#versions-and-upgrades)
 before updating an existing server.
+
+Keep the module block present when running `terraform destroy`. Before deleting
+the block, revoke any owned deploy key by setting `dokku_ssh_public_key_path` to
+null and applying; removing the configuration also removes its destroy-time hook.

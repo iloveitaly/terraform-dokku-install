@@ -129,6 +129,12 @@ the server and controller key paths to remain reachable during destroy. For an
 already destroyed server, remove only its obsolete ownership resource from state
 after confirming there is no live host on which that key still needs revocation.
 
+Run `terraform destroy` while the module block is still present. If you want to
+delete the module block instead, first set `dokku_ssh_public_key_path = null` and
+apply to revoke the owned key. Terraform cannot run this module's destroy-time
+hook after its configuration has been removed. See
+[destroy-time provisioner behavior](https://developer.hashicorp.com/terraform/language/provisioners#remove-a-resource-block-containing-a-destroy-time-provisioner).
+
 A timeout disconnects SSH but cannot guarantee that a remote package operation
 stopped. Inspect the server before retrying; the remote lock prevents overlapping
 reconciliation attempts.

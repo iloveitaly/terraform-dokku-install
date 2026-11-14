@@ -32,7 +32,9 @@ First tagged release of the Terraform/OpenTofu Dokku installer.
    and OpenSSH. Targets require Ubuntu 22.04 or 24.04 with reachable SSH and
    passwordless sudo. A verified `ssh_known_hosts_path` is required.
 3. Destroy revokes the key owned by this module but retains installed Docker,
-   Dokku, plugins, and daemon configuration. Refresh does not inspect remote drift.
+   Dokku, plugins, and daemon configuration. Keep the module configuration present
+   during destroy, or apply a null deploy-key path to revoke it before removing
+   the module block. Refresh does not inspect remote drift.
 4. The `dokku_version` output reports the requested selector. Check `dokku version`
    on the server for its resolved numeric release. `dokku_install_stdout` is
    deprecated and returns null; installation output streams during apply.
