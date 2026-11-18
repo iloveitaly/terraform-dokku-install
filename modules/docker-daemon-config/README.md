@@ -1,10 +1,9 @@
 # Docker daemon configuration
 
-This submodule applies a JSON object after Docker installation and before Dokku
-installation. The parent module supplies the verified SSH connection and bundled
-OpenSSH runner. Prefer the parent's `docker_daemon_config` input for normal use.
-
-For example, add this input to your Dokku module configuration:
+For most setups, set `docker_daemon_config` in the parent Dokku module. The
+parent supplies the verified SSH connection and bundled OpenSSH runner. It
+installs Docker first, applies the JSON through this submodule, then installs
+Dokku.
 
 ```hcl
 docker_daemon_config = jsonencode({
@@ -13,34 +12,34 @@ docker_daemon_config = jsonencode({
 })
 ```
 
-The parent module handles installation order and SSH settings. See its
-[usage instructions](../../README.md#usage) for a complete configuration.
+See a complete module configuration in the [usage instructions](../../README.md#usage).
 
-The remote transaction validates the candidate with `dockerd --validate`, stages
-an atomic replacement, restarts Docker, and checks both systemd and `docker info`.
-On failure or interruption it restores the previous file, or removes the new file
-if none existed, and attempts to restart Docker with the previous configuration.
-An existing file is also backed up to `/etc/docker/daemon.json.bak`.
+The submodule checks the new configuration with `dockerd --validate`, replaces
+the whole file atomically, then restarts Docker and checks systemd and
+`docker info`. It backs up an existing file to `/etc/docker/daemon.json.bak`.
+On failure or interruption, it restores the previous file or removes the new
+file if none existed, then tries to restart Docker with the previous settings.
 
-The configuration replaces the entire daemon file. Storage changes are rejected
-when images, containers, or volumes exist unless `allow_storage_migration` is
-explicitly enabled. That flag permits the operation; it does not migrate Docker
-data. Applying `{}` requests default file-based settings, subject to the same
-storage checks. Removing the submodule
-or setting the parent's input to null leaves the last remote file in place.
+If the host has images, containers, or volumes, enable `allow_storage_migration`
+to permit storage changes. Migrate Docker data separately. Apply `{}` to request
+Docker's default file-based settings, subject to the same storage checks.
+Removing the submodule or setting the parent's input to null keeps the last
+file on the server.
 
-Inputs changed from the old SSH-provider version. Existing standalone callers
-must supply `connection`, `server_identity`, `runner`, and `install_id` as shown
-by the parent module in [main.tf](../../main.tf). `runner` must be the absolute
-path to the bundled `scripts/remote.py`; its sibling `files/` and
-`modules/docker-daemon-config/files/` directories must remain available. Copying
-only this submodule or the runner is insufficient. Connection key paths refer to
-files on the Terraform controller. Set `connection.private_key_path` to null to
-use its SSH agent. Use `install_id` from the operation that installed Docker to
-establish the dependency and rerun configuration after replacement.
+If you call the submodule directly, supply `connection`, `server_identity`,
+`runner`, and `install_id`. See how the parent module calls it in [main.tf](../../main.tf).
 
-Follow the parent's [state migration instructions](../../README.md#migrating-from-the-ssh-provider-implementation)
-before applying to an installation managed by the old provider.
+Set `runner` to the absolute path to the bundled `scripts/remote.py`. If you copy
+the runner or submodule elsewhere, keep the `files/` and
+`modules/docker-daemon-config/files/` directories in the same relative locations.
+SSH key paths point to files on the Terraform controller. Set
+`connection.private_key_path` to null to use the controller's SSH agent. Pass
+`install_id` from the Docker installation operation so configuration waits for
+Docker and runs again when Terraform replaces that operation.
+
+The inputs changed after the move away from the SSH provider. If you're migrating
+an existing installation, follow the parent's
+[state migration instructions](../../README.md#migrating-from-the-ssh-provider-implementation) before applying.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements

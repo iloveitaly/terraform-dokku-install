@@ -1,5 +1,5 @@
 variable "ssh_private_key_path" {
-  description = "Path to the SSH private key. Set to null to use the SSH agent."
+  description = "Optional path to a local SSH private key. Leave unset or set to null to use the SSH agent."
   type        = string
   default     = null
   validation {
@@ -9,7 +9,7 @@ variable "ssh_private_key_path" {
 }
 
 variable "ssh_known_hosts_path" {
-  description = "Path to an existing known_hosts file containing the verified server host key."
+  description = "Path to an existing known_hosts file with the verified server host key."
   type        = string
   nullable    = false
   validation {
@@ -30,7 +30,7 @@ variable "ssh_port" {
 }
 
 variable "server_revision" {
-  description = "Change this value when the server is replaced at the same SSH address."
+  description = "Change this value after a rebuild that keeps the same SSH address and server ID."
   type        = string
   default     = ""
   nullable    = false
@@ -57,7 +57,7 @@ variable "ssh_host" {
 }
 
 variable "dokku_version" {
-  description = "Dokku version selector: latest stable for new installs, or an exact numeric version."
+  description = "Use latest for the latest stable release on a fresh install, or specify an exact numeric version."
   type        = string
   default     = "latest"
   nullable    = false
@@ -68,7 +68,7 @@ variable "dokku_version" {
 }
 
 variable "dokku_hostname" {
-  description = "Dokku hostname"
+  description = "Dokku's global domain for default app subdomains. For example, an app named api under dokku.example.com gets api.dokku.example.com."
   type        = string
   default     = "dokku.yourhost.com"
   nullable    = false
@@ -79,7 +79,7 @@ variable "dokku_hostname" {
 }
 
 variable "dokku_ssh_public_key_path" {
-  description = "Path to an SSH public key file to add to Dokku for deployments (optional)."
+  description = "Optional path to the public SSH key Dokku should authorize for deployments."
   type        = string
   default     = null
   validation {
@@ -111,7 +111,7 @@ variable "dokku_plugins" {
 }
 
 variable "dokku_plugin_definitions" {
-  description = "Explicit plugins keyed by Dokku plugin name, each with an HTTPS Git URL and optional revision."
+  description = "Map of Dokku plugin names to HTTPS Git URLs and optional revisions."
   type = map(object({
     url      = string
     revision = optional(string)
@@ -137,7 +137,7 @@ variable "docker_daemon_config" {
 }
 
 variable "server_id" {
-  description = "Stable identity of the server, preferably the cloud instance ID. Defaults to the SSH host."
+  description = "Optional server instance ID, such as the cloud instance ID. Changing it reruns setup even at the same SSH address. If omitted, the ID is ssh_host."
   type        = string
   default     = null
   validation {
@@ -147,7 +147,7 @@ variable "server_id" {
 }
 
 variable "management_id" {
-  description = "Unique ownership identifier for deploy keys managed by this module on the server."
+  description = "Unique ID this module uses to track deploy-key ownership on the server."
   type        = string
   default     = "terraform-dokku"
   nullable    = false
