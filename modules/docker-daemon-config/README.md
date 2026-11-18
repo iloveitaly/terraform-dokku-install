@@ -45,7 +45,7 @@ an existing installation, follow the parent's
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | terraform | >= 1.10 |
 
 
@@ -53,7 +53,7 @@ an existing installation, follow the parent's
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | allow\_storage\_migration | Allow changes to Docker storage configuration. | `bool` | `false` | no |
 | connection | SSH connection settings. | <pre>object({<br/>    host              = string<br/>    user              = string<br/>    port              = number<br/>    known_hosts_path  = string<br/>    private_key_path  = string<br/>    operation_timeout = number<br/>  })</pre> | n/a | yes |
 | docker\_daemon\_config | JSON object to write to /etc/docker/daemon.json. | `string` | n/a | yes |
@@ -64,7 +64,7 @@ an existing installation, follow the parent's
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | configuration\_applied | Whether Docker daemon configuration completed. |
 | configuration\_hash | Hash of the applied Docker daemon configuration. |
 | resource\_id | Identifier of the configuration resource. |

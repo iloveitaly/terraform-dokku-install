@@ -310,7 +310,7 @@ shellcheck files/*.sh modules/docker-daemon-config/files/*.sh integration/run.sh
 ```
 
 Run the same configuration tests in OpenTofu with `tofu test`. CI tests Terraform
-1.10.5 and 1.17.1 and OpenTofu 1.10.0 and 1.13.9. The Python tests exercise failure
+1.10.5 and 1.17.2 and OpenTofu 1.10.0 and 1.13.9. The Python tests exercise failure
 paths with isolated files and fake services.
 
 The package checks unpack a Git archive into a separate consuming configuration
@@ -365,7 +365,7 @@ CI checks the minimum and current CLI versions separately from live installation
 | Ubuntu 24.04, ARM64 | 28.5.2 / 1.7.28 | 0.35.19 → 0.35.20 → 0.38.34 (`latest` at test time) | Live installation, no-op plan, upgrades, hostname, plugins, keys, rollback, and destroy |
 | Ubuntu 22.04 | Configurable | Configurable | Installer accepts this release. It was outside the live test run. |
 
-Use terraform-docs 0.20.0 to regenerate the reference tables.
+Use terraform-docs 0.25.1 to regenerate the reference tables.
 
 ```sh
 terraform-docs .
@@ -376,19 +376,19 @@ terraform-docs -c .terraform-docs.yml modules/docker-daemon-config
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | terraform | >= 1.10 |
 
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | docker\_daemon\_config | ./modules/docker-daemon-config | n/a |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | allow\_dokku\_upgrade | Allow changing an already installed Dokku version. | `bool` | `false` | no |
 | allow\_storage\_migration | Allow changes to Docker storage configuration on an existing Docker installation. | `bool` | `false` | no |
 | containerd\_version | containerd.io version to install. Null selects 1.7.28 on Ubuntu 22.04/24.04 or 2.2.5 on Ubuntu 26.04. | `string` | `null` | no |
@@ -413,7 +413,7 @@ terraform-docs -c .terraform-docs.yml modules/docker-daemon-config
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | docker\_daemon\_config\_applied | Whether the module applied custom Docker daemon configuration. |
 | docker\_daemon\_config\_hash | Hash of the applied Docker daemon configuration, if any. |
 | dokku\_hostname | Dokku's global domain for default app subdomains. |

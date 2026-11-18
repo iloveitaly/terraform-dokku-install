@@ -23,20 +23,20 @@ jobs:
           - tool: terraform
             version: 1.10.5
           - tool: terraform
-            version: 1.17.1
+            version: 1.17.2
           - tool: tofu
             version: 1.10.0
           - tool: tofu
             version: 1.13.9
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
       - if: matrix.tool == 'terraform'
-        uses: hashicorp/setup-terraform@v3.1.2
+        uses: hashicorp/setup-terraform@v4.0.1
         with:
           terraform_version: ${{ matrix.version }}
           terraform_wrapper: false
       - if: matrix.tool == 'tofu'
-        uses: opentofu/setup-opentofu@v1.0.7
+        uses: opentofu/setup-opentofu@v2.0.2
         with:
           tofu_version: ${{ matrix.version }}
           tofu_wrapper: false
@@ -53,11 +53,11 @@ jobs:
   documentation:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4.2.2
-      - name: Install terraform-docs 0.20.0
+      - uses: actions/checkout@v7.0.1
+      - name: Install terraform-docs 0.25.1
         run: |
-          curl -fsSL --retry 3 https://github.com/terraform-docs/terraform-docs/releases/download/v0.20.0/terraform-docs-v0.20.0-linux-amd64.tar.gz -o /tmp/terraform-docs.tar.gz
-          echo '34ae01772412bb11474e6718ea62113e38ff5964ee570a98c69fafe3a6dff286  /tmp/terraform-docs.tar.gz' | sha256sum --check
+          curl -fsSL --retry 3 https://github.com/terraform-docs/terraform-docs/releases/download/v0.25.1/terraform-docs-v0.25.1-linux-amd64.tar.gz -o /tmp/terraform-docs.tar.gz
+          echo '246f1a3211c9dbbed4c4af82b856dbd40acda78816ac8cdb5203c2869b659c76  /tmp/terraform-docs.tar.gz' | sha256sum --check
           tar -xzf /tmp/terraform-docs.tar.gz -C /tmp terraform-docs
           sudo install -m 0755 /tmp/terraform-docs /usr/local/bin/terraform-docs
       - run: terraform-docs --output-check .
@@ -68,8 +68,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: hashicorp/setup-terraform@v3.1.2
+      - uses: actions/checkout@v7.0.1
+      - uses: hashicorp/setup-terraform@v4.0.1
         with:
           terraform_version: 1.10.5
           terraform_wrapper: false
