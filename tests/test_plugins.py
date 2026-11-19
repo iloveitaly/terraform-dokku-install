@@ -43,11 +43,14 @@ class PluginReconciliationTests(unittest.TestCase):
         commands = {
             'id': 'echo 0',
             'flock': 'exit 0',
-            'git': """if [ "$3" = remote ]; then printf '%s\\n' "$PLUGIN_URL"; exit 0; fi
-if [ "$3" = rev-parse ]; then cat "$HEAD_FILE"; exit 0; fi
+            'git': """if [ "$1" = -c ] && [ "$2" = "safe.directory=/var/lib/dokku/plugins/available/test" ] && [ "$3" = -C ] && [ "$4" = /var/lib/dokku/plugins/available/test ]; then
+  if [ "$5" = remote ]; then printf '%s\\n' "$PLUGIN_URL"; exit 0; fi
+  if [ "$5" = rev-parse ]; then cat "$HEAD_FILE"; exit 0; fi
+fi
 exit 1""",
             'dokku': """echo "$*" >> "$CALLS"
-if [ "$1" = plugin:installed ]; then exit 0; fi
+if [ "$1" = plugin:installed ]; then exit "${INSTALLED_EXIT:-0}"; fi
+if [ "$1" = plugin:install ]; then printf '%s' "${INSTALL_HEAD:-$UPDATE_HEAD}" > "$HEAD_FILE"; exit 0; fi
 if [ "$1" = plugin:update ]; then printf '%s' "$UPDATE_HEAD" > "$HEAD_FILE"; exit 0; fi
 exit 1""",
         }
@@ -87,6 +90,14 @@ exit 1""",
         result = self.run_plugin('b' * 40)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('revision mismatch', result.stderr)
+
+    def test_fresh_install_verifies_revision(self):
+        self.env['INSTALLED_EXIT'] = '1'
+        self.env['INSTALL_HEAD'] = 'b' * 40
+        result = self.run_plugin('b' * 40)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('plugin:install https://example.com/a/b.git --name test --committish', self.log.read_text())
+        self.assertEqual(self.head.read_text(), 'b' * 40)
 
 
 if __name__ == '__main__':

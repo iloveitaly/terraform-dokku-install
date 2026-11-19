@@ -78,6 +78,16 @@ variable "dokku_hostname" {
   }
 }
 
+variable "dokku_ssh_public_key" {
+  description = "Optional public SSH key content Dokku should authorize for deployments."
+  type        = string
+  default     = null
+  validation {
+    condition     = var.dokku_ssh_public_key == null ? true : trimspace(var.dokku_ssh_public_key) != "" && !strcontains(trimspace(var.dokku_ssh_public_key), "\n") && !strcontains(var.dokku_ssh_public_key, "\r")
+    error_message = "dokku_ssh_public_key must be a single nonempty SSH public key line or null."
+  }
+}
+
 variable "dokku_ssh_public_key_path" {
   description = "Optional path to the public SSH key Dokku should authorize for deployments."
   type        = string

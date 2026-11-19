@@ -92,7 +92,8 @@ SSH paths point to files on the machine running Terraform.
 | --- | --- | --- |
 | `ssh_known_hosts_path` | Verified SSH host keys for the server | Every remote operation, including destroy |
 | `ssh_private_key_path` | Controller key used to connect to `ssh_user` | Optional. Defaults to `null`, which uses the SSH agent. |
-| `dokku_ssh_public_key_path` | Public client key to authorize for Dokku deployments | Plan and apply when configuring a deploy key |
+| `dokku_ssh_public_key` | Inline public client key to authorize for Dokku deployments | Plan and apply when configuring a deploy key without a file path |
+| `dokku_ssh_public_key_path` | Public client key file to authorize for Dokku deployments | Plan and apply when configuring a deploy key from a file |
 
 Omit `ssh_private_key_path` or set it to `null` to use the SSH agent through
 `SSH_AUTH_SOCK`. Load passphrase-protected keys into the agent before applying.
@@ -141,7 +142,7 @@ removing its obsolete ownership resource from state.
 
 Keep the module block in place when you run `terraform destroy` so Terraform
 can run the revocation hook. If you plan to delete the block, first apply
-`dokku_ssh_public_key_path = null` to revoke the key.
+`dokku_ssh_public_key = null` and `dokku_ssh_public_key_path = null` to revoke the key.
 [Destroy-time provisioner behavior](https://developer.hashicorp.com/terraform/language/provisioners#remove-a-resource-block-containing-a-destroy-time-provisioner)
 
 An SSH timeout closes the connection, and package operations may still be running
@@ -249,11 +250,11 @@ Schedule configuration changes around workloads that a Docker restart could inte
 
 ## Deploy keys
 
-Set `dokku_ssh_public_key_path` to register one deploy key. The module validates
+Set `dokku_ssh_public_key` or `dokku_ssh_public_key_path` to register one deploy key. The module validates
 the replacement before editing authorized_keys. When you rotate or rename a key,
 the module backs up the old authorization and restores it if the change fails.
 It tracks the exact key line for each `management_id` in a root-owned ledger
-under `/var/lib/terraform-dokku/keys/`. Setting the path to null or destroying
+under `/var/lib/terraform-dokku/keys/`. Setting the key input to null or destroying
 the module revokes the recorded key and leaves other keys in place.
 
 The module refuses to take over an existing key with the requested name. During
@@ -398,6 +399,7 @@ terraform-docs -c .terraform-docs.yml modules/docker-daemon-config
 | dokku\_plugin\_definitions | Map of Dokku plugin names to HTTPS Git URLs and optional revisions. | <pre>map(object({<br/>    url      = string<br/>    revision = optional(string)<br/>  }))</pre> | `{}` | no |
 | dokku\_plugins | Legacy list of known plugin short names or HTTPS Git repository URLs. | `list(string)` | `[]` | no |
 | dokku\_ssh\_key\_name | Name for the deploy SSH key in Dokku. | `string` | `"admin"` | no |
+| dokku\_ssh\_public\_key | Optional public SSH key content Dokku should authorize for deployments. | `string` | `null` | no |
 | dokku\_ssh\_public\_key\_path | Optional path to the public SSH key Dokku should authorize for deployments. | `string` | `null` | no |
 | dokku\_version | Use latest for the latest stable release on a fresh install, or specify an exact numeric version. | `string` | `"latest"` | no |
 | management\_id | Unique ID this module uses to track deploy-key ownership on the server. | `string` | `"terraform-dokku"` | no |

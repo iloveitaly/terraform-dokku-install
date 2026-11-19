@@ -24,12 +24,12 @@ output "dokku_install_stdout" {
 }
 output "dokku_ssh_key_configured" {
   description = "Whether the module configured an SSH public key for Dokku deployments."
-  value       = var.dokku_ssh_public_key_path != null
+  value       = var.dokku_ssh_public_key_path != null || var.dokku_ssh_public_key != null
   depends_on  = [terraform_data.ssh_key]
 }
 output "dokku_ssh_key_name" {
   description = "The name of the configured deploy key, if any."
-  value       = var.dokku_ssh_public_key_path != null ? var.dokku_ssh_key_name : null
+  value       = var.dokku_ssh_public_key_path != null || var.dokku_ssh_public_key != null ? var.dokku_ssh_key_name : null
   depends_on  = [terraform_data.ssh_key]
 }
 output "dokku_plugins" {

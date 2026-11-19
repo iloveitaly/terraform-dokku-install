@@ -27,17 +27,20 @@ def expected_revision(url, revision):
     bases=[ref for ref in refs if not ref.endswith('^{}')]
     if len(bases)!=1: raise SystemExit(f'Plugin revision {revision} is ambiguous or missing')
     return refs.get(bases[0]+'^{}',refs[bases[0]])
+def plugin_git(path, *args):
+    # Plugin directories are owned by dokku; pass safe.directory so root can inspect them without mutating global git config.
+    return subprocess.check_output(['git','-c',f'safe.directory={path}','-C',path,*args],text=True).strip()
 for p in plugins:
     n,u,r=(p[k] for k in ('name','url','revision'))
     expected=expected_revision(u,r)
     installed=subprocess.run(['dokku','plugin:installed',n],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0
     path='/var/lib/dokku/plugins/available/'+n
     if installed:
-        existing=subprocess.check_output(['git','-C',path,'remote','get-url','origin'],text=True).strip()
+        existing=plugin_git(path,'remote','get-url','origin')
         if existing != u: raise SystemExit(f'Plugin {n} has source {existing}, expected {u}; change it manually')
-        actual=subprocess.check_output(['git','-C',path,'rev-parse','HEAD'],text=True).strip()
+        actual=plugin_git(path,'rev-parse','HEAD')
         if expected is not None and actual != expected: subprocess.run(['dokku','plugin:update',n,r],check=True)
     else: subprocess.run(['dokku','plugin:install',u,'--name',n]+(['--committish',r] if r is not None else []),check=True)
-    actual=subprocess.check_output(['git','-C',path,'rev-parse','HEAD'],text=True).strip()
+    actual=plugin_git(path,'rev-parse','HEAD')
     if expected is not None and actual != expected: raise SystemExit(f'Plugin {n} revision mismatch: expected {expected}, got {actual}')
 PY

@@ -143,3 +143,46 @@ run "reject_invalid_containerd_version" {
   variables { containerd_version = "2.2.5;bad" }
   expect_failures = [var.containerd_version]
 }
+
+run "valid_inline_ssh_public_key" {
+  command = plan
+  variables {
+    dokku_ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHgoFK/JHSzDJsP4QBi6Pwe9LifvRH1vDQWcvPa4IpXo"
+  }
+  assert {
+    condition     = output.dokku_ssh_key_configured == true && output.dokku_ssh_key_name == "admin" && terraform_data.ssh_key.triggers_replace.public_key == sha256("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHgoFK/JHSzDJsP4QBi6Pwe9LifvRH1vDQWcvPa4IpXo")
+    error_message = "An inline SSH public key must configure deploy key outputs and trigger tracking."
+  }
+}
+
+run "valid_inline_ssh_public_key_trailing_newline" {
+  command = plan
+  variables {
+    dokku_ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHgoFK/JHSzDJsP4QBi6Pwe9LifvRH1vDQWcvPa4IpXo\n"
+  }
+  assert {
+    condition     = output.dokku_ssh_key_configured == true
+    error_message = "A trailing newline on an inline SSH public key must be accepted."
+  }
+}
+
+run "reject_empty_inline_ssh_public_key" {
+  command = plan
+  variables { dokku_ssh_public_key = "   " }
+  expect_failures = [var.dokku_ssh_public_key]
+}
+
+run "reject_multiline_inline_ssh_public_key" {
+  command = plan
+  variables { dokku_ssh_public_key = "ssh-ed25519 AAAA\nssh-ed25519 BBBB" }
+  expect_failures = [var.dokku_ssh_public_key]
+}
+
+run "reject_both_ssh_public_key_and_path" {
+  command = plan
+  variables {
+    dokku_ssh_public_key      = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHgoFK/JHSzDJsP4QBi6Pwe9LifvRH1vDQWcvPa4IpXo"
+    dokku_ssh_public_key_path = "tests/fixtures/known_hosts"
+  }
+  expect_failures = [terraform_data.ssh_key]
+}

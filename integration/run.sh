@@ -99,7 +99,7 @@ fi
 remote sudo dokku version | grep -F "$initial_installed"
 remote sudo dokku ssh-keys:list | grep -F integration
 remote sudo dokku plugin:installed redis
-remote sudo git -C /var/lib/dokku/plugins/available/redis rev-parse HEAD | grep -Fx e9df51c60fc5e14a486fab6e740e35f110a00995
+remote sudo git -c safe.directory=/var/lib/dokku/plugins/available/redis -C /var/lib/dokku/plugins/available/redis rev-parse HEAD | grep -Fx e9df51c60fc5e14a486fab6e740e35f110a00995
 set +e
 tf plan -input=false -detailed-exitcode > "$work/second-plan" 2>&1
 status=$?

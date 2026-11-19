@@ -111,10 +111,16 @@ resource "terraform_data" "ssh_key" {
     installation    = terraform_data.install.id
     plugins         = terraform_data.plugins.id
     key_name        = var.dokku_ssh_key_name
-    public_key      = var.dokku_ssh_public_key_path == null ? null : filesha256(pathexpand(var.dokku_ssh_public_key_path))
+    public_key      = var.dokku_ssh_public_key != null ? sha256(var.dokku_ssh_public_key) : (var.dokku_ssh_public_key_path == null ? null : filesha256(pathexpand(var.dokku_ssh_public_key_path)))
     public_key_path = var.dokku_ssh_public_key_path
     runner          = filesha256(local.runner)
     script          = filesha256("${path.module}/files/ssh-key.sh")
+  }
+  lifecycle {
+    precondition {
+      condition     = !(var.dokku_ssh_public_key_path != null && var.dokku_ssh_public_key != null)
+      error_message = "Set either dokku_ssh_public_key_path or dokku_ssh_public_key, not both."
+    }
   }
   provisioner "local-exec" {
     command = "python3 \"$DOKKU_RUNNER\""
@@ -125,6 +131,7 @@ resource "terraform_data" "ssh_key" {
         args = {
           management_id   = var.management_id
           name            = var.dokku_ssh_key_name
+          public_key      = var.dokku_ssh_public_key
           public_key_path = var.dokku_ssh_public_key_path
         }
       }))
